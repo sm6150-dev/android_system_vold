@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "FsCrypt.h"
 #include "MetadataCrypt.h"
 #include "KeyBuffer.h"
 
