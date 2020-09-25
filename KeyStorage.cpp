@@ -64,6 +64,7 @@ static constexpr size_t SECDISCARDABLE_BYTES = 1 << 14;
 static constexpr size_t STRETCHED_BYTES = 1 << 6;
 
 static constexpr uint32_t AUTH_TIMEOUT = 30;  // Seconds
+constexpr int EXT4_AES_256_XTS_KEY_SIZE = 64;
 
 static const char* kCurrentVersion = "1";
 static const char* kRmPath = "/system/bin/rm";
@@ -141,8 +142,13 @@ bool generateWrappedStorageKey(KeyBuffer* key) {
     if (!keymaster) return false;
     std::string key_temp;
     auto paramBuilder = km::AuthorizationSetBuilder().AesEncryptionKey(AES_KEY_BYTES * 8);
-    paramBuilder.Authorization(km::TAG_ROLLBACK_RESISTANCE);
-    paramBuilder.Authorization(km::TAG_STORAGE_KEY);
+    km::KeyParameter param1;
+    param1.tag = static_cast<::android::hardware::keymaster::V4_0::Tag>(
+        android::hardware::keymaster::V4_0::KM_TAG_FBE_ICE);
+    param1.f.boolValue = true;
+    paramBuilder.push_back(param1);
+    //paramBuilder.Authorization(km::TAG_ROLLBACK_RESISTANCE);
+    //paramBuilder.Authorization(km::TAG_STORAGE_KEY);
     if (!keymaster.generateKey(paramBuilder, &key_temp)) return false;
     *key = KeyBuffer(key_temp.size());
     memcpy(reinterpret_cast<void*>(key->data()), key_temp.c_str(), key->size());

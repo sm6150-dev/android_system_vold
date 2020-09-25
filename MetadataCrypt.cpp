@@ -39,6 +39,7 @@
 #include "Checkpoint.h"
 #include "CryptoType.h"
 #include "EncryptInplace.h"
+#include "FsCrypt.h"
 #include "KeyStorage.h"
 #include "KeyUtil.h"
 #include "Keymaster.h"

@@ -16,6 +16,7 @@
 
 #include "FsCrypt.h"
 
+#include "Keymaster.h"
 #include "KeyStorage.h"
 #include "KeyUtil.h"
 #include "Utils.h"
@@ -245,6 +246,10 @@ static bool get_data_file_encryption_options(EncryptionOptions* options) {
         LOG(ERROR) << "The emmc_optimized encryption flag is only allowed on eMMC storage.  Remove "
                       "this flag from the device's fstab";
         return false;
+    }
+    if (options->version == 1) {
+        options->use_hw_wrapped_key =
+            GetEntryForMountPoint(&fstab_default, DATA_MNT_POINT)->fs_mgr_flags.wrapped_key;
     }
     return true;
 }
@@ -647,7 +652,7 @@ static std::string volume_secdiscardable_path(const std::string& volume_uuid) {
 }
 
 static bool read_or_create_volkey(const std::string& misc_path, const std::string& volume_uuid,
-                                  EncryptionPolicy* policy) {
+                                  EncryptionPolicy* policy, int flags) {
     auto secdiscardable_path = volume_secdiscardable_path(volume_uuid);
     std::string secdiscardable_hash;
     if (android::vold::pathExists(secdiscardable_path)) {
@@ -702,6 +707,7 @@ static bool fscrypt_rewrap_user_key(userid_t user_id, int serial,
         return false;
     }
     auto const paths = get_ce_key_paths(directory_path);
+
     std::string ce_key_path;
     if (!get_ce_key_new_path(directory_path, paths, &ce_key_path)) return false;
     if (!android::vold::storeKeyAtomically(ce_key_path, user_key_temp, store_auth, ce_key))
@@ -845,7 +851,7 @@ bool fscrypt_prepare_user_storage(const std::string& volume_uuid, userid_t user_
                 if (!EnsurePolicy(de_policy, misc_de_path)) return false;
                 if (!EnsurePolicy(de_policy, vendor_de_path)) return false;
             } else {
-                if (!read_or_create_volkey(misc_de_path, volume_uuid, &de_policy)) return false;
+                if (!read_or_create_volkey(misc_de_path, volume_uuid, &de_policy, flags)) return false;
             }
             if (!EnsurePolicy(de_policy, user_de_path)) return false;
         }
@@ -876,7 +882,7 @@ bool fscrypt_prepare_user_storage(const std::string& volume_uuid, userid_t user_
                 if (!EnsurePolicy(ce_policy, misc_ce_path)) return false;
                 if (!EnsurePolicy(ce_policy, vendor_ce_path)) return false;
             } else {
-                if (!read_or_create_volkey(misc_ce_path, volume_uuid, &ce_policy)) return false;
+                if (!read_or_create_volkey(misc_ce_path, volume_uuid, &ce_policy, flags)) return false;
             }
             if (!EnsurePolicy(ce_policy, media_ce_path)) return false;
             if (!EnsurePolicy(ce_policy, user_ce_path)) return false;
